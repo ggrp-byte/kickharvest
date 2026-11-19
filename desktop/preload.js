@@ -5,6 +5,7 @@ contextBridge.exposeInMainWorld('kickminer', {
   openPlayer: (url) => ipcRenderer.send('open-player', url),
   closePlayer: () => ipcRenderer.send('close-player'),
   openLogin: () => ipcRenderer.send('open-login'),
+  onLoginClosed: (cb) => ipcRenderer.on('login-closed', cb),
   openDrops: () => ipcRenderer.send('open-drops'),
   setAutoLaunch: (val) => ipcRenderer.send('set-login-item', val),
   getAutoLaunch: () => ipcRenderer.invoke('get-login-item'),

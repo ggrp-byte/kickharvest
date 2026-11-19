@@ -39,8 +39,10 @@ button.danger{color:#ff9a9d;border-color:#4a2628}
 .badge{font-size:11px;padding:2px 8px;border-radius:20px;border:1px solid var(--line);color:var(--dim);white-space:nowrap}
 .badge.done{color:var(--acc);border-color:#2c4a1e}
 .dropcard{border:1px solid var(--line);border-radius:10px;padding:10px;margin-bottom:8px}
-.bar{background:#0a0c09;border:1px solid var(--line);border-radius:6px;height:10px;margin-top:6px;overflow:hidden}
-.bar .fill{background:var(--acc);height:100%}
+.bar{background:#0f140d;border:1px solid #3a4234;border-radius:6px;height:14px;margin-top:8px;overflow:hidden}
+.bar .fill{background:linear-gradient(90deg,#2e8f0a,#53fc18);height:100%;border-radius:5px 0 0 5px;min-width:2px}
+.bar .fill.zero{min-width:0;background:transparent}
+.hint{background:#1c2415;border:1px solid #3a5230;color:#c8e6b0;border-radius:10px;padding:8px 10px;font-size:13px;margin-bottom:8px}
 label.chk{flex-direction:row;align-items:center;gap:6px;color:var(--txt);font-size:14px;flex:none;padding-top:16px}
 label.chk input{width:auto}
 #players iframe{width:100%;aspect-ratio:16/9;background:#000;border:1px solid var(--line);border-radius:12px;display:block}
@@ -353,12 +355,18 @@ if(/android=1/.test(location.search)){
 if(NATIVE){
   $('#dropsPanel').style.display='';
   $('#btnLogin').addEventListener('click',function(){window.kickminer.openLogin()});
+  window.kickminer.onLoginClosed(function(){loadDrops(false)});
   $('#btnDrops').addEventListener('click',function(){loadDrops(false)});
   $('#btnDropsPage').addEventListener('click',function(){window.kickminer.openDrops()});
   $('#autoLaunchChk').addEventListener('change',function(){window.kickminer.setAutoLaunch(this.checked)});
   window.kickminer.getAutoLaunch().then(function(v){$('#autoLaunchChk').checked=!!v});
   loadDrops(false);
   setInterval(function(){loadDrops(true)},600000);
+}
+function fmtUnits(u){
+  u=Math.round(u);
+  if(u>=60){var h=Math.floor(u/60),m=u%60;return h+' godz'+(m?', '+m+' min':'')}
+  return u+' min';
 }
 function loadDrops(quiet){
   var box=$('#dropsBox');
@@ -368,6 +376,9 @@ function loadDrops(quiet){
     var progs={};
     (d.progress||[]).forEach(function(p){progs[p.id]=p});
     var html='';
+    if(!(d.progress||[]).length){
+      html+='<div class="hint">Postepy sa puste, bo aplikacja nie jest zalogowana na Twoje konto. Kliknij „Zaloguj sie na kick.com" — po zamknieciu okna logowania postep odswiezy sie sam.</div>';
+    }
     var tips=[],ready=[];
     var notified={};
     try{notified=JSON.parse(localStorage.getItem('kh_notified')||'{}')}catch(e){}
@@ -378,23 +389,28 @@ function loadDrops(quiet){
       }catch(e){}
       var p=progs[cam.id]||{};
       var rw=(cam.rewards&&cam.rewards[0])||{};
-      var pr=(p.rewards&&p.rewards[0]&&p.rewards[0].progress)||0;
-      var ru=(p.rewards&&p.rewards[0]&&p.rewards[0].required_units)||rw.required_units||0;
-      if(ru>1&&pr<=1)pr=Math.round(pr*ru);
-      var claimed=(p.rewards&&p.rewards[0]&&p.rewards[0].claimed)||false;
-      var pct=ru>0?Math.min(100,Math.round(pr/ru*100)):0;
+      var hasProg=!!(p.rewards&&p.rewards[0]);
+      var pr=hasProg?(p.rewards[0].progress||0):0;
+      var ru=hasProg?(p.rewards[0].required_units||rw.required_units||0):(rw.required_units||0);
+      if(ru>1&&pr<=1&&pr>0)pr=Math.round(pr*ru);
+      var claimed=hasProg?!!p.rewards[0].claimed:false;
+      var pct=hasProg&&ru>0?Math.min(100,Math.round(pr/ru*100)):0;
       var game=(cam.category&&cam.category.name)||'';
       var catId=(cam.category&&cam.category.id)||'';
       var name=cam.name||'Kampania';
-      var label=name+' '+(rw.name||'')+' ('+pct+'%)';
-      tips.push(label);
-      if(ru>0&&pr>=ru&&!claimed&&!notified[cam.id]){
+      var endTxt=cam.ends_at?' · do '+cam.ends_at.slice(0,10):'';
+      tips.push(name+' ('+(hasProg?pct+'%':'brak logowania')+')');
+      if(hasProg&&ru>0&&pr>=ru&&!claimed&&!notified[cam.id]){
         ready.push(name+': '+rw.name);
         notified[cam.id]=true;
       }
-      html+='<div class="dropcard"><b>'+name+'</b>'+(game?' <span class="cat">'+game+'</span>':'')+'<div class="cat">Nagroda: '+(rw.name||'?')+(claimed?' — ODEBRANO':'')+'</div>';
-      if(ru>0)html+='<div class="cat">Postep: '+pr+' / '+ru+' ('+pct+'%)'+(cam.ends_at?' · do '+cam.ends_at.slice(0,10):'')+'</div>';
-      if(ru>0)html+='<div class="bar"><div class="fill" style="width:'+pct+'%"></div></div>';
+      html+='<div class="dropcard"><b>'+name+'</b>'+(game?' <span class="cat">'+game+'</span>':'')+'<div class="cat">Nagroda: '+(rw.name||'?')+'</div>';
+      if(hasProg){
+        html+='<div class="cat">Postep: '+pct+'% ('+fmtUnits(pr)+' z '+fmtUnits(ru)+')'+(claimed?' — ODEBRANO':'')+(pr<ru?' — zostalo '+fmtUnits(ru-pr):'')+endTxt+'</div>';
+        html+='<div class="bar"><div class="fill'+(pct===0?' zero':'')+'" style="width:'+pct+'%"></div></div>';
+      }else{
+        html+='<div class="cat">Postep: zaloguj sie, aby zobaczyc'+endTxt+'</div>';
+      }
       if(catId)html+='<div style="margin-top:6px"><button class="small" data-catid="'+catId+'">Dodaj aktywne streamy z tej gry</button></div>';
       html+='</div>';
     });

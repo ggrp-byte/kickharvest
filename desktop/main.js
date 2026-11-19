@@ -155,7 +155,10 @@ ipcMain.on('open-login', () => {
     webPreferences: { partition: 'persist:kick' }
   });
   loginWin.loadURL('https://kick.com');
-  loginWin.on('closed', () => { loginWin = null; });
+  loginWin.on('closed', () => {
+    loginWin = null;
+    if (win && !win.isDestroyed()) win.webContents.send('login-closed');
+  });
 });
 ipcMain.on('open-drops', () => {
   shell.openExternal('https://kick.com/drops');
