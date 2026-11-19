@@ -1,0 +1,38 @@
+{
+  "name": "kickharvest",
+  "version": "1.1.0",
+  "description": "KickHarvest — automatically watches Kick.com streams to farm viewing rewards (drops)",
+  "main": "main.js",
+  "author": "guciopl",
+  "license": "MIT",
+  "scripts": {
+    "start": "node sync.js && electron .",
+    "sync": "node sync.js",
+    "dist": "node sync.js && electron-builder --win portable"
+  },
+  "devDependencies": {
+    "electron": "^33.2.0",
+    "electron-builder": "^26.18.0"
+  },
+  "build": {
+    "appId": "com.kickharvest.app",
+    "productName": "KickHarvest",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "index.html",
+      "icon.png",
+      "package.json"
+    ],
+    "win": {
+      "target": "portable",
+      "icon": "icon.ico"
+    },
+    "portable": {
+      "artifactName": "KickHarvest.exe"
+    }
+  }
+}

@@ -1,0 +1,12 @@
+node_modules/
+desktop/node_modules/
+desktop/dist*/
+desktop/index.html
+desktop/electron_test.log
+android/.gradle/
+android/app/build/
+android/local.properties
+vibe_images/
+.t.js
+*.exe
+*.apk

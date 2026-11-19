@@ -1,0 +1,458 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0d0f0c">
+<meta name="color-scheme" content="dark">
+<title>KickHarvest</title>
+<style>
+:root{--bg:#0d0f0c;--panel:#151813;--line:#262a22;--txt:#e8f0e2;--dim:#8fa08a;--acc:#53fc18;--red:#e5484d;--amber:#f5a524;}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--bg);color:var(--txt);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-text-size-adjust:100%}
+body{padding:14px 14px 60px;max-width:880px;margin:0 auto}
+h1{font-size:20px;letter-spacing:.5px}
+h1 b{color:var(--acc)}
+.sub{color:var(--dim);font-size:13px;margin:2px 0 12px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:12px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end}
+label{color:var(--dim);font-size:13px;display:flex;flex-direction:column;gap:4px;flex:1;min-width:130px}
+select,input{background:#0a0c09;border:1px solid var(--line);color:var(--txt);border-radius:8px;padding:9px 8px;font:inherit;width:100%}
+button{cursor:pointer;border:1px solid var(--line);background:#1c2019;color:var(--txt);border-radius:10px;padding:10px 14px;font:inherit;font-weight:600}
+button.primary{background:var(--acc);color:#041500;border-color:var(--acc)}
+button.primary.running{background:#24331d;color:var(--acc);border-color:#3c5230}
+button.small{padding:6px 10px;font-size:13px;border-radius:8px;font-weight:500}
+button.danger{color:#ff9a9d;border-color:#4a2628}
+#status{min-height:20px;color:var(--amber);font-size:13px;margin:8px 0 0}
+#addRow{display:flex;gap:8px}
+#addRow input{flex:1}
+.ch{display:flex;align-items:center;gap:10px;padding:10px 4px;border-bottom:1px solid var(--line);flex-wrap:wrap;cursor:pointer}
+.ch:last-child{border-bottom:none}
+.dot{width:10px;height:10px;border-radius:50%;background:#666;flex:none}
+.dot.live{background:var(--acc);box-shadow:0 0 8px var(--acc)}
+.dot.off{background:var(--red)}
+.ch .name{font-weight:700;word-break:break-all}
+.ch .nd{flex:1;min-width:120px}
+.ch .cat{color:var(--dim);font-size:11.5px}
+.ch .times{color:var(--dim);font-size:12.5px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.ch .target{max-width:110px;min-width:90px}
+.badge{font-size:11px;padding:2px 8px;border-radius:20px;border:1px solid var(--line);color:var(--dim);white-space:nowrap}
+.badge.done{color:var(--acc);border-color:#2c4a1e}
+.dropcard{border:1px solid var(--line);border-radius:10px;padding:10px;margin-bottom:8px}
+.bar{background:#0a0c09;border:1px solid var(--line);border-radius:6px;height:10px;margin-top:6px;overflow:hidden}
+.bar .fill{background:var(--acc);height:100%}
+label.chk{flex-direction:row;align-items:center;gap:6px;color:var(--txt);font-size:14px;flex:none;padding-top:16px}
+label.chk input{width:auto}
+#players iframe{width:100%;aspect-ratio:16/9;background:#000;border:1px solid var(--line);border-radius:12px;display:block}
+#players .wrap{position:relative;margin-bottom:10px}
+#players .tag{position:absolute;top:8px;left:8px;background:rgba(0,0,0,.75);border:1px solid var(--line);padding:3px 10px;border-radius:20px;font-size:12px;z-index:2;pointer-events:none}
+#players .tag.live{color:var(--acc)}
+#players.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px}
+#players.grid .wrap{margin-bottom:0}
+#players.miniview iframe{max-width:340px;aspect-ratio:16/9}
+#players.hideview .wrap{position:fixed;left:-10000px;top:0;width:256px;height:144px}
+#players.hideview iframe{width:256px;height:144px}
+#players.hideview .tag{display:none}
+.note{color:var(--dim);font-size:12.5px}
+.note b{color:var(--txt)}
+.wait{padding:44px 16px;text-align:center;color:var(--dim);border:1px dashed var(--line);border-radius:12px;background:var(--panel)}
+a{color:var(--acc)}
+@media (max-width:520px){.ch .times{width:100%;padding-left:20px}}
+</style>
+</head>
+<body>
+<h1>KICK <b>HARVEST</b></h1>
+<p class="sub">Sam ogląda streamy Kick, żeby zbierać za Ciebie dropy — oszczędnie, w tle, bez dźwięku.</p>
+
+<div class="panel">
+  <div class="row" style="margin-bottom:8px">
+    <button id="btnStart" class="primary" style="flex:1;font-size:16px;padding:14px">START</button>
+  </div>
+  <div class="row">
+    <label>Jak oglądać
+      <select id="modeSel">
+        <option value="popup">W osobnym oknie (liczy dropy – zalecane)</option>
+        <option value="embed-seq">W tej karcie – po kolei</option>
+        <option value="embed-all">W tej karcie – wszystkie naraz</option>
+      </select>
+    </label>
+    <label>Rodzaj odtwarzacza
+      <select id="playerSel">
+        <option value="full" selected>Pełna strona (liczy dropy)</option>
+        <option value="light">Lekki (nie liczy dropów)</option>
+      </select>
+    </label>
+    <label>Widok odtwarzacza
+      <select id="viewSel">
+        <option value="normal" selected>Normalny</option>
+        <option value="mini">Mini (telefon, bateria)</option>
+        <option value="hidden">Ukryty (komputer, noc)</option>
+      </select>
+    </label>
+  </div>
+  <div class="row" style="margin-top:8px">
+    <label>Cel łączny — wszystkie kanały razem (minuty, 0 = wyłączony)
+      <input id="ggoal" type="number" min="0" max="100000" value="0" inputmode="numeric">
+    </label>
+    <label>Kategoria dropu (np. GTA — puste = każda gra)
+      <input id="catIn" placeholder="np. GTA" autocomplete="off" spellcheck="false">
+    </label>
+    <label class="chk"><input type="checkbox" id="autoStartChk"> Startuj automatycznie po otwarciu</label>
+  </div>
+  <div id="status"></div>
+</div>
+
+<div class="panel" id="dropsPanel" style="display:none">
+  <div class="row">
+    <button id="btnLogin" class="small" style="flex:none">Zaloguj się na kick.com</button>
+    <button id="btnDrops" class="small" style="flex:none">Odśwież postęp dropów</button>
+    <button id="btnDropsPage" class="small" style="flex:none">Otwórz kick.com/drops</button>
+    <label class="chk"><input type="checkbox" id="autoLaunchChk"> uruchamiaj z Windowsem</label>
+  </div>
+  <div id="dropsBox" style="margin-top:8px"></div>
+</div>
+
+<div class="panel">
+  <div id="addRow">
+    <input id="chIn" placeholder="Nazwa kanału lub link, np. xqc" autocomplete="off" spellcheck="false">
+    <button id="btnAdd" class="primary">Dodaj</button>
+  </div>
+  <div id="list" style="margin-top:6px"></div>
+</div>
+
+<div id="players"></div>
+
+<p class="note">
+  <b>Jak liczą się dropy (sprawdzone):</b> czas nalicza tylko <b>pełna strona kick.com na zalogowanym koncie</b>. Odtwarzacz „Lekki" NIE liczy dropów — sprawdziłem jego ruch sieciowy: w ogóle nie kontaktuje się z systemem dropów, to tylko podgląd.
+  Tryb <b>„osobne okno"</b> otwiera prawdziwą stronę kick.com — liczy zawsze: zaloguj się tam raz i kliknij ikonę głośnika, żeby wyciszyć (Kick zapamięta). Postęp i odbiór nagród sprawdzisz na <a href="https://kick.com" target="_blank" rel="noopener">kick.com</a>.
+  <b>GTA 6 „Sunset Drop"</b> (do 1.01.2027): liczy się każdy stream w kategorii GTA 6 — kategoria kanału jest pokazana na karcie.
+  Tryb „w tej karcie" z „Pełną stroną" liczy, jeśli przeglądarka przepuszcza cookies Kick (w Chrome: ikona „oka" w pasku adresu → zezwól).
+  <b>Telefon:</b> trzymaj tę kartę z przodu, przyciemnij ekran i wybierz widok „Mini". Przy wyłączonym ekranie telefonu stream się NIE liczy — Android zamraża przeglądarkę w tle. Najoszczędniej na noc: komputer z wyłączonym monitorem — okno kick.com w tle, wyciszone, liczy całą noc.
+</p>
+
+<script>
+'use strict';
+var $=function(s){return document.querySelector(s)};
+var K='kick_miner_drop_v2';
+var LS={get:function(){try{return JSON.parse(localStorage.getItem(K))||{}}catch(e){return{}}},set:function(o){try{localStorage.setItem(K,JSON.stringify(o))}catch(e){}}};
+var D=LS.get();
+var channels=D.channels||[];
+var totals=D.totals||{};
+var settings=Object.assign({mode:'popup',player:'full',view:'normal',ggoal:0,cat:'',autoStart:false},D.settings);
+var running=false,cur=0,override=null,sessions={},live={},offCount={},lastGoalMin=-1;
+var NATIVE=!!(window.kickminer&&window.kickminer.isNative);
+var lastTick=performance.now(),wakeLock=null,pop=null,checking=false,mounted='';
+
+function save(){LS.set({channels:channels,totals:totals,settings:settings})}
+function fmt(s){s=Math.max(0,Math.floor(s));var h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=s%60;return (h?h+':'+String(m).padStart(2,'0'):m)+':'+String(x).padStart(2,'0')}
+function setMsg(t){$('#status').textContent=t}
+function norm(v){
+  v=String(v||'').trim().toLowerCase().replace(/^https?:\/\//i,'').replace(/^www\./,'');
+  var m=v.match(/^(?:kick\.com\/)?([a-z0-9_-]{2,40})/);
+  return m?m[1]:'';
+}
+function liveOf(slug){var l=live[slug];if(!l)return 0;return l.live?1:-1}
+function catMatch(name){return !settings.cat||!name||name.toLowerCase().indexOf(settings.cat.toLowerCase())>=0}
+function watchable(c){
+  var s=live[c.slug];
+  if(!s)return true;
+  if(!s.live)return false;
+  if(s.cat&&!catMatch(s.cat))return false;
+  return true;
+}
+function activeSlugs(){
+  if(!running)return[];
+  if(settings.mode==='embed-all')return channels.filter(function(c){return !c.done&&watchable(c)}).slice(0,8).map(function(c){return c.slug});
+  var c=channels[cur];
+  return (c&&!c.done&&watchable(c))?[c.slug]:[];
+}
+function pickNext(){
+  var n=channels.length,i,idx,c;
+  if(!n)return -1;
+  for(i=0;i<n;i++){idx=(cur+i)%n;c=channels[idx];if(!c.done&&watchable(c))return idx}
+  if(!settings.cat){for(i=0;i<n;i++){idx=(cur+i)%n;if(!channels[idx].done)return idx}}
+  return -1;
+}
+function navigatePop(){
+  if(NATIVE){window.kickminer.openPlayer('https://kick.com/'+channels[cur].slug);return}
+  if(pop&&!pop.closed)pop.location='https://kick.com/'+channels[cur].slug;
+}
+function popOpen(){return NATIVE?!!pop:(pop&&!pop.closed)}
+function wake(){
+  if('wakeLock' in navigator){navigator.wakeLock.request('screen').then(function(w){wakeLock=w}).catch(function(){})}
+}
+function releaseWake(){if(wakeLock){try{wakeLock.release()}catch(e){}wakeLock=null}}
+function start(){
+  if(!channels.length){setMsg('Najpierw dodaj chociaż jeden kanał.');return}
+  if(channels.every(function(c){return c.done})){channels.forEach(function(c){c.done=false});save()}
+  running=true;override=null;
+  cur=pickNext();if(cur<0)cur=0;
+  if(settings.mode==='popup'){
+    if(popOpen()){navigatePop()}
+    else if(NATIVE){pop={};window.kickminer.openPlayer('https://kick.com/'+channels[cur].slug)}
+    else{pop=window.open('https://kick.com/'+channels[cur].slug,'kickminer','width=960,height=600')}
+    if(!pop){running=false;setMsg('Przeglądarka zablokowała okno. Zezwól na wyskakujące okna dla tej strony i wciśnij START jeszcze raz.');return}
+  }
+  setMsg(settings.mode!=='popup'&&settings.player==='light'
+    ?'Uwaga: odtwarzacz Lekki NIE liczy dropow — to tylko podglad. Do dropow wybierz Pelna strone lub Osobne okno.'
+    :'Praca... '+modeLabel());
+  wake();renderAll();
+}
+function stop(msg){
+  running=false;override=null;
+  if(pop){if(NATIVE){try{window.kickminer.closePlayer()}catch(e){}}else if(!pop.closed){pop.close()}}
+  pop=null;
+  releaseWake();setMsg(msg||'Zatrzymano.');renderAll();
+}
+function modeLabel(){
+  return settings.mode==='popup'?'osobne okno':(settings.mode==='embed-all'?'wszystkie naraz':'po kolei');
+}
+function tick(){
+  var now=performance.now(),dt=(now-lastTick)/1000;lastTick=now;
+  if(!running)return;
+  if(dt>180)dt=0;
+  var vis=document.visibilityState==='visible';
+  if(vis&&dt>0){
+    var slugs=activeSlugs(),i,s;
+    for(i=0;i<slugs.length;i++){s=slugs[i];sessions[s]=(sessions[s]||0)+dt;totals[s]=(totals[s]||0)+dt}
+  }
+  var c,i2,changed=false;
+  for(i2=0;i2<channels.length;i2++){c=channels[i2];if(!c.done&&settings.ggoal<=0&&c.target>0&&(totals[c.slug]||0)>=c.target*60){c.done=true;changed=true}}
+  if(changed){save();renderList()}
+  if(settings.ggoal>0){
+    var sum=0,i3;
+    for(i3=0;i3<channels.length;i3++)sum+=totals[channels[i3].slug]||0;
+    if(sum>=settings.ggoal*60){stop('Cel laczny osiagniety: '+fmt(sum)+'. Koniec pracy.');return}
+    var gm=Math.floor(sum/60);
+    if(vis&&gm!==lastGoalMin){lastGoalMin=gm;setMsg('Cel laczny: '+gm+' / '+settings.ggoal+' min');}
+  }
+  if(channels.length&&channels.every(function(x){return x.done})){stop('Wszystkie kanały ukończyły cel. Koniec pracy.');return}
+  if(settings.mode!=='embed-all'){
+    c=channels[cur];
+    var badCount=c?(offCount[c.slug]||0):0;
+    var need=!c||c.done||(badCount>=2&&override!==c.slug);
+    if(need){
+      var nxt=pickNext();
+      if(nxt>=0&&nxt!==cur){cur=nxt;override=null;if(settings.mode==='popup')navigatePop()}
+    }
+  }
+  renderTimers();renderPlayers();
+}
+function renderList(){
+  var box=$('#list');box.innerHTML='';
+  if(!channels.length){box.innerHTML='<p class="note" style="padding:8px 4px 0">Lista jest pusta. Dodaj kanały, które biorą udział w kampanii dropów.</p>';return}
+  channels.forEach(function(c,idx){
+    var lv=liveOf(c.slug);
+    var row=document.createElement('div');row.className='ch';row.dataset.idx=idx;
+    var dot=document.createElement('span');dot.className='dot'+(lv===1?' live':(lv===-1?' off':''));
+    var nd=document.createElement('div');nd.className='nd';
+    var name=document.createElement('div');name.className='name';name.textContent=c.slug;
+    var cat=document.createElement('div');cat.className='cat';
+    var l=live[c.slug];cat.textContent=l&&l.cat?l.cat:'';
+    nd.appendChild(name);nd.appendChild(cat);
+    var times=document.createElement('span');times.className='times';times.dataset.slug=c.slug;
+    var sel=document.createElement('select');sel.className='target';
+    if(settings.ggoal>0)sel.style.display='none';
+    [0,30,60,90,120,180,240,360,720].forEach(function(t){
+      var o=document.createElement('option');o.value=t;
+      o.textContent=t===0?'bez limitu':t+' min';
+      if(t===c.target)o.selected=true;sel.appendChild(o);
+    });
+    sel.addEventListener('change',function(){c.target=+sel.value;save();renderList()});
+    var badge=document.createElement('span');
+    var lcat=(live[c.slug]&&live[c.slug].cat)||'';
+    var isDrop=!!(settings.cat&&lcat&&catMatch(lcat));
+    badge.className='badge'+(c.done||isDrop?' done':'');
+    badge.textContent=c.done?'UKONCZONE':(isDrop?'DROP':(lv===1?(settings.cat&&lcat?'INNA GRA':'LIVE'):(lv===-1?'OFFLINE':'?')));
+    var reset=document.createElement('button');reset.className='small';reset.textContent='Reset';
+    reset.addEventListener('click',function(ev){ev.stopPropagation();c.done=false;totals[c.slug]=0;save();renderList()});
+    var del=document.createElement('button');del.className='small danger';del.textContent='Usun';
+    del.addEventListener('click',function(ev){ev.stopPropagation();
+      channels.splice(idx,1);if(cur>=channels.length)cur=0;override=null;save();renderList();if(running){if(settings.mode==='popup'&&channels.length&&popOpen())navigatePop();renderPlayers()}
+    });
+    row.append(dot,nd,times,sel,badge,reset,del);
+    row.addEventListener('click',function(){if(running&&settings.mode!=='embed-all'){cur=idx;override=c.slug;offCount[c.slug]=0;if(settings.mode==='popup')navigatePop();renderPlayers()}});
+    box.appendChild(row);
+  });
+  renderTimers();
+}
+function renderTimers(){
+  var els=document.querySelectorAll('.times');
+  els.forEach(function(el){
+    var s=el.dataset.slug;
+    el.textContent='sesja '+fmt(sessions[s]||0)+' · razem '+fmt(totals[s]||0);
+  });
+}
+function renderPlayers(){
+  var box=$('#players');
+  if(!running){box.innerHTML='';box.className='';mounted='';return}
+  if(settings.mode==='popup'){
+    box.innerHTML='<div class="wait">'+(NATIVE?'Stream leci w ukrytym oknie aplikacji (bez obrazu i dźwięku): ':'Odtwarzanie w osobnym oknie: ')+'<b>'+channels[cur].slug+'</b><br><span style="font-size:12px">'+(NATIVE?'Zamknij aplikację ikoną X — praca dalej leci w tle (ikona przy zegarze).':'Jeśli okno się nie pojawiło, zezwól na wyskakujące okna i wciśnij START ponownie.')+'</span></div>';
+    box.className='';mounted='';return;
+  }
+  var slugs,wait='';
+  if(settings.mode==='embed-all'){
+    slugs=channels.filter(function(c){return !c.done&&watchable(c)}).slice(0,8).map(function(c){return c.slug});
+    wait='Czekam, az ktorys kanal wystartuje...';
+  }else{
+    var c=channels[cur];
+    if(!c||c.done){slugs=[];wait='Wszystkie kanaly ukonczyly cel.'}
+    else if(liveOf(c.slug)===-1){slugs=[];wait='Kanal '+c.slug+' jest teraz offline. Czekam, az wystartuje...'}
+    else if(settings.cat&&live[c.slug]&&live[c.slug].cat&&!catMatch(live[c.slug].cat)){slugs=[];wait='Kanal '+c.slug+' gra teraz w: '+live[c.slug].cat+'. Czekam na stream w kategorii: '+settings.cat+'...'}
+    else slugs=[c.slug];
+  }
+  var key=slugs.join(',');
+  if(key===mounted)return;
+  mounted=key;box.innerHTML='';
+  box.className=(slugs.length>1?'grid ':'')+(settings.view==='hidden'?'hideview':(settings.view==='mini'?'miniview':''));
+  if(!slugs.length){box.innerHTML='<div class="wait">'+wait+'</div>';return}
+  slugs.forEach(function(s){
+    var w=document.createElement('div');w.className='wrap';
+    var tag=document.createElement('div');tag.className='tag live';tag.textContent='LIVE · '+s;
+    var f=document.createElement('iframe');
+    f.src=settings.player==='full'?'https://kick.com/'+s:'https://player.kick.com/'+s+'?autoplay=true&muted=true';
+    f.allow='autoplay; fullscreen; picture-in-picture; encrypted-media';
+    f.allowFullscreen=true;
+    w.appendChild(tag);w.appendChild(f);box.appendChild(w);
+  });
+  if(settings.view==='hidden'){
+    var n=document.createElement('div');n.className='note';
+    n.textContent='Odtwarzacz ukryty — stream leci w tle (wyciszony). Monitor mozesz wylaczyc.';
+    box.appendChild(n);
+  }
+}
+function renderAll(){renderList();renderPlayers();var b=$('#btnStart');b.textContent=running?'STOP':'START';b.classList.toggle('running',running)}
+function liveLoop(){
+  if(checking)return;checking=true;
+  var slugs=channels.map(function(c){return c.slug});
+  var chain=Promise.resolve();
+  slugs.forEach(function(s){
+    var l=live[s];
+    if(l&&Date.now()-l.ts<20000)return;
+    chain=chain.then(function(){
+      return fetch('https://kick.com/api/v2/channels/'+encodeURIComponent(s))
+        .then(function(r){return r.ok?r.json():null})
+        .then(function(j){if(j){var cats=(j.categories&&j.categories.length)?j.categories:(j.recent_categories||[]);var cname=cats.length?cats[0].name:'';var isLive=!!(j.livestream)||j.is_live===true;var bad=!isLive||(cname&&!catMatch(cname));live[s]={live:isLive,cat:cname,ts:Date.now()};offCount[s]=bad?(offCount[s]||0)+1:0}})
+        .catch(function(){});
+    }).then(function(){renderList();if(running)renderPlayers()});
+  });
+  chain.then(function(){checking=false});
+}
+/* init */
+$('#modeSel').value=settings.mode;
+$('#playerSel').value=settings.player;
+$('#viewSel').value=settings.view;
+$('#ggoal').value=settings.ggoal;
+$('#catIn').value=settings.cat;
+if(/android=1/.test(location.search)){
+  if(settings.mode==='popup')settings.mode='embed-seq';
+  var po=document.querySelector('#modeSel option[value=popup]');
+  if(po)po.parentNode.removeChild(po);
+  $('#modeSel').value=settings.mode;
+}
+if(NATIVE){
+  $('#dropsPanel').style.display='';
+  $('#btnLogin').addEventListener('click',function(){window.kickminer.openLogin()});
+  $('#btnDrops').addEventListener('click',function(){loadDrops(false)});
+  $('#btnDropsPage').addEventListener('click',function(){window.kickminer.openDrops()});
+  $('#autoLaunchChk').addEventListener('change',function(){window.kickminer.setAutoLaunch(this.checked)});
+  window.kickminer.getAutoLaunch().then(function(v){$('#autoLaunchChk').checked=!!v});
+  loadDrops(false);
+  setInterval(function(){loadDrops(true)},600000);
+}
+function loadDrops(quiet){
+  var box=$('#dropsBox');
+  if(!quiet)box.innerHTML='<span class="note">Pobieranie postepu dropow...</span>';
+  window.kickminer.getDrops().then(function(d){
+    if(!d||d.error||!d.campaigns){if(!quiet)box.innerHTML='<span class="note">'+(d&&d.error==='no_data'?'Najpierw zaloguj sie na kick.com (przycisk obok) — bez logowania nie ma postepu.':'Blad pobierania postepu. Sprobuj za chwile.')+'</span>';return}
+    var progs={};
+    (d.progress||[]).forEach(function(p){progs[p.id]=p});
+    var html='';
+    var tips=[],ready=[];
+    var notified={};
+    try{notified=JSON.parse(localStorage.getItem('kh_notified')||'{}')}catch(e){}
+    (d.campaigns||[]).forEach(function(cam){
+      try{
+        var ends=cam.ends_at?new Date(cam.ends_at):null;
+        if(ends&&ends.getTime()<Date.now())return;
+      }catch(e){}
+      var p=progs[cam.id]||{};
+      var rw=(cam.rewards&&cam.rewards[0])||{};
+      var pr=(p.rewards&&p.rewards[0]&&p.rewards[0].progress)||0;
+      var ru=(p.rewards&&p.rewards[0]&&p.rewards[0].required_units)||rw.required_units||0;
+      if(ru>1&&pr<=1)pr=Math.round(pr*ru);
+      var claimed=(p.rewards&&p.rewards[0]&&p.rewards[0].claimed)||false;
+      var pct=ru>0?Math.min(100,Math.round(pr/ru*100)):0;
+      var game=(cam.category&&cam.category.name)||'';
+      var catId=(cam.category&&cam.category.id)||'';
+      var name=cam.name||'Kampania';
+      var label=name+' '+(rw.name||'')+' ('+pct+'%)';
+      tips.push(label);
+      if(ru>0&&pr>=ru&&!claimed&&!notified[cam.id]){
+        ready.push(name+': '+rw.name);
+        notified[cam.id]=true;
+      }
+      html+='<div class="dropcard"><b>'+name+'</b>'+(game?' <span class="cat">'+game+'</span>':'')+'<div class="cat">Nagroda: '+(rw.name||'?')+(claimed?' — ODEBRANO':'')+'</div>';
+      if(ru>0)html+='<div class="cat">Postep: '+pr+' / '+ru+' ('+pct+'%)'+(cam.ends_at?' · do '+cam.ends_at.slice(0,10):'')+'</div>';
+      if(ru>0)html+='<div class="bar"><div class="fill" style="width:'+pct+'%"></div></div>';
+      if(catId)html+='<div style="margin-top:6px"><button class="small" data-catid="'+catId+'">Dodaj aktywne streamy z tej gry</button></div>';
+      html+='</div>';
+    });
+    if(ready.length){localStorage.setItem('kh_notified',JSON.stringify(notified));}
+    if(ready.length){
+      try{new Notification('KickHarvest — nagroda gotowa!',{body:ready.join(', ')});}catch(e){}
+    }
+    if(NATIVE){try{window.kickminer.setTooltip(tips.length?tips.slice(0,3).join(' · '):'brak kampanii')}catch(e){}}
+    box.innerHTML=html||'<span class="note">Brak aktywnych kampanii dropow.</span>';
+    box.querySelectorAll('button[data-catid]').forEach(function(b){
+      b.addEventListener('click',function(){
+        var id=b.getAttribute('data-catid');
+        b.disabled=true;b.textContent='Szukam...';
+        window.kickminer.getLivestreams(id).then(function(list){
+          b.disabled=false;b.textContent='Dodaj aktywne streamy z tej gry';
+          if(!list||!list.length){setMsg('Nie znaleziono streamow w tej kategorii.');return}
+          var added=0;
+          list.forEach(function(s){
+            var slug=String(s.slug||'').toLowerCase().replace(/[^a-z0-9_-]/g,'');
+            if(slug&&!channels.some(function(c){return c.slug===slug})){channels.push({slug:slug,target:0,done:false});added++}
+          });
+          save();renderList();setMsg('Dodano '+added+' kanalow.');liveLoop();
+        });
+      });
+    });
+  });
+}
+$('#modeSel').addEventListener('change',function(){
+  settings.mode=this.value;save();
+  if(running){override=null;
+    if(settings.mode==='popup'){if(!popOpen()){if(NATIVE){pop={};window.kickminer.openPlayer('https://kick.com/'+channels[cur].slug)}else{pop=window.open('https://kick.com/'+channels[cur].slug,'kickminer','width=960,height=600')}if(!pop){setMsg('Zablokowane wyskakujace okno.');return}}else navigatePop();}
+    setMsg('Tryb zmieniony na: '+modeLabel());renderPlayers();
+  }
+});
+$('#playerSel').addEventListener('change',function(){settings.player=this.value;save();if(running){mounted='';renderPlayers()}});
+$('#viewSel').addEventListener('change',function(){settings.view=this.value;save();if(running){mounted='';renderPlayers()}});
+$('#ggoal').addEventListener('change',function(){settings.ggoal=Math.max(0,Math.floor(+this.value||0));this.value=settings.ggoal;save();renderList()});
+$('#catIn').addEventListener('change',function(){settings.cat=this.value.trim();offCount={};save();renderList();if(running)renderPlayers()});
+$('#btnStart').addEventListener('click',function(){running?stop():start()});
+$('#btnAdd').addEventListener('click',function(){
+  var s=norm($('#chIn').value);
+  if(!s){setMsg('Podaj nazwe kanalu, np. xqc');return}
+  if(channels.some(function(c){return c.slug===s})){setMsg('Kanal '+s+' juz jest na liscie.');return}
+  channels.push({slug:s,target:0,done:false});$('#chIn').value='';setMsg('Dodano: '+s);save();renderList();liveLoop();
+});
+$('#chIn').addEventListener('keydown',function(e){if(e.key==='Enter')$('#btnAdd').click()});
+document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible'&&running)wake()});
+window.addEventListener('beforeunload',save);
+setInterval(tick,1000);
+setInterval(save,30000);
+setInterval(liveLoop,20000);
+$('#autoStartChk').checked=!!settings.autoStart;
+$('#autoStartChk').addEventListener('change',function(){settings.autoStart=this.checked;save()});
+renderAll();liveLoop();
+if(settings.autoStart&&channels.length){
+  if(NATIVE||settings.mode!=='popup'){setTimeout(start,800)}
+  else{setMsg('Auto-start: tryb „osobne okno" wymaga kliknięcia START (przeglądarki blokują automatyczne okna).')}
+}
+</script>
+</body>
+</html>
