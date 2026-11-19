@@ -18,8 +18,9 @@ async function kickCookies() {
 
 // Cloudflare blocks plain requests from the app process (403).
 // Workaround (same as the desktop tool): fetch from INSIDE a real kick.com page,
-// same-origin, with cookies — that always passes.
-async function fetchFromKickPage(url) {
+// same-origin, with cookies — that always passes. Progress additionally needs
+// the session token as a Bearer header.
+async function fetchFromKickPage(url, withBearer) {
   let w = null, created = false;
   if (playerWin && !playerWin.isDestroyed()) w = playerWin;
   else if (loginWin && !loginWin.isDestroyed()) w = loginWin;
@@ -39,8 +40,14 @@ async function fetchFromKickPage(url) {
       await w.loadURL('https://kick.com');
       await new Promise(r => setTimeout(r, 2500));
     }
+    let auth = '{}';
+    if (withBearer) {
+      const cs = await kickCookies();
+      const token = (cs.find(c => c.name === 'session_token') || {}).value || '';
+      auth = JSON.stringify({ 'Accept': 'application/json', 'Authorization': 'Bearer ' + token });
+    }
     const text = await w.webContents.executeJavaScript(
-      "fetch(" + JSON.stringify(url) + ",{headers:{'Accept':'application/json'},credentials:'include'}).then(function(r){return r.text()}).catch(function(e){return JSON.stringify({error:String(e)})})"
+      "fetch(" + JSON.stringify(url) + ",{headers:" + auth + ",credentials:'include'}).then(function(r){return r.text()}).catch(function(e){return JSON.stringify({error:String(e)})})"
     );
     return JSON.parse(text);
   } finally {
@@ -176,11 +183,16 @@ ipcMain.handle('get-drops', async () => {
   try {
     const campaigns = await fetchFromKickPage('https://web.kick.com/api/v1/drops/campaigns');
     let progress = null;
-    try { progress = await fetchFromKickPage('https://web.kick.com/api/v1/drops/progress'); } catch (e) {}
+    let progressError = false;
+    try {
+      progress = await fetchFromKickPage('https://web.kick.com/api/v1/drops/progress', true);
+    } catch (e) { progressError = true; }
+    console.log('PROGRESS RAW:', JSON.stringify(progress).slice(0, 400));
     const cd = campaigns && Array.isArray(campaigns.data) ? campaigns.data : null;
     if (!cd) return { error: 'no_data' };
     const pd = progress && Array.isArray(progress.data) ? progress.data : [];
-    return { campaigns: cd, progress: pd };
+    if (!pd.length && progress && progress.data && !Array.isArray(progress.data)) progressError = true;
+    return { campaigns: cd, progress: pd, progressError };
   } catch (e) {
     return { error: String(e) };
   }
@@ -208,6 +220,11 @@ if (!gotLock) {
   // Another copy is already running — exit and let it show its window instead.
   app.quit();
 } else {
+  // Dev mode: share the packaged app's profile so the login session is the same.
+  if (!app.isPackaged) {
+    app.setPath('userData', 'C:/Users/gucio/AppData/Roaming/KickHarvest');
+  }
+
   app.on('second-instance', () => {
     if (win) { win.show(); win.focus(); }
   });

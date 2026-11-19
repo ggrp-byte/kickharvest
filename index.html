@@ -376,7 +376,9 @@ function loadDrops(quiet){
     var progs={};
     (d.progress||[]).forEach(function(p){progs[p.id]=p});
     var html='';
-    if(!(d.progress||[]).length){
+    if(d.progressError){
+      html+='<div class="hint">Blad odczytu postepu (sesja wygasla?). Zaloguj sie ponownie na kick.com i odswiez.</div>';
+    }else if(!(d.progress||[]).length){
       html+='<div class="hint">Postepy sa puste, bo aplikacja nie jest zalogowana na Twoje konto. Kliknij „Zaloguj sie na kick.com" — po zamknieciu okna logowania postep odswiezy sie sam.</div>';
     }
     var tips=[],ready=[];
